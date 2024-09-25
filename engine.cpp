@@ -16,6 +16,8 @@ const int SCREEN_HEIGHT = 1080;
 
 const float FOCAL_LENGTH = 220.0f;
 
+uint64_t lines = 0;
+
 # define PI 3.141592653589793238462643383279502884L
 
 #define DEFAULT_ANGLE (PI/180)
@@ -26,6 +28,7 @@ typedef struct {
 
 struct vertex {
     float x, y, z;
+    int last_drawn;
 };
 
 struct face {
@@ -115,6 +118,7 @@ void project(float x, float y, float z, int *screenX, int *screenY) {
 }
 
 void draw_line(float x1, float y1, float z1, float x2, float y2, float z2, SDL_Renderer* renderer) {
+    lines++;
     int screenX1, screenY1, screenX2, screenY2;
 
     bool point1InFront = (z1 > 0);
@@ -130,17 +134,15 @@ void draw_line(float x1, float y1, float z1, float x2, float y2, float z2, SDL_R
             t = z1 / (z1 - z2);
             xi = x1 + t * (x2 - x1);
             yi = y1 + t * (y2 - y1);
-            z1 = 0;
-            project(xi, yi, z1 + 0.001f, &screenX1, &screenY1);
+            project(xi, yi, 0.001f, &screenX1, &screenY1);
             project(x2, y2, z2, &screenX2, &screenY2);
             SDL_RenderDrawLine(renderer, screenX1, screenY1, screenX2, screenY2);
         } else {
             t = z2 / (z2 - z1);
             xi = x2 + t * (x1 - x2);
             yi = y2 + t * (y1 - y2);
-            z2 = 0;
             project(x1, y1, z1, &screenX1, &screenY1);
-            project(xi, yi, z2 + 0.001f, &screenX2, &screenY2);
+            project(xi, yi, 0.001f, &screenX2, &screenY2);
             SDL_RenderDrawLine(renderer, screenX1, screenY1, screenX2, screenY2);
         }
     }
@@ -195,9 +197,14 @@ int main() {
                 running = false;
             }
         }
+        //include for dynamic input:
         //take_input();
         if(moving) {
+            for(vertex vert : vertices) {
+                vert.last_drawn = 0;
+            }
             vertex start, old;
+            vertex * older = NULL, * starter = NULL;
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             for (const auto& face : faces){ 
                 bool first = true;
@@ -215,15 +222,22 @@ int main() {
                         start.x = x;
                         start.y = y;
                         start.z = old.z;
+                        older = &vertices[vi];
+                        starter = &vertices[vi];
    
                         first = false;
                         continue;
                     }
-                    else if(i == face.vertex_indices.size()-1) {
+                    else if(i == face.vertex_indices.size()-1 && starter->last_drawn != vi) {
                         draw_line(x, y, z, start.x, start.y, start.z, renderer);
+                        starter->last_drawn = vi;
                     }
-                    draw_line(old.x, old.y, old.z, x, y, z, renderer);
+                    if(older->last_drawn != vi) {
+                        draw_line(old.x, old.y, old.z, x, y, z, renderer);
+                        older->last_drawn = vi;
+                    }
                     
+                    older = &vertices[vi];
                     old.x = x;
                     old.y = y;
                     old.z = vertices[vi].z + model.origin.z;
@@ -231,13 +245,6 @@ int main() {
             }
             
             counter++;
-            auto now = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed = now - time_start;
-            if (elapsed.count() >= 30.0) {
-                printf("\nfps:%5.5f\ttime elapsed:%5.5f\tframes computed:%.10i\n", counter/(elapsed.count()), elapsed.count(), counter);
-                break;
-            }
-
             SDL_RenderPresent(renderer);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
@@ -246,6 +253,13 @@ int main() {
             moving = true;
             //include for dynamic input:
             //moving = false;
+            auto now = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = now - time_start;
+            if (elapsed.count()>=30) {
+                printf("\nfps:%5.5f\ttime elapsed:%5.5f\tframes computed:%.10i\n", counter/(elapsed.count()), elapsed.count(), counter);
+                printf ("%llu\n", lines);
+                break;
+            }
             
         }
     }

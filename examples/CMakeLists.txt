@@ -7,7 +7,7 @@ find_package(SDL2 REQUIRED)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include_directories(/home/blob/Documents/3d-Engine/include)
+include_directories(${CMAKE_SOURCE_DIR}/../include)
 
 set(HIRIE_LIB "${CMAKE_SOURCE_DIR}/../build/bin/libHirie.a")
 if(NOT EXISTS ${HIRIE_LIB})

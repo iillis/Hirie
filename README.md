@@ -1,4 +1,4 @@
-# **HIRIE**
+# **Simple Graphic Engine**
 Hirie is a simple graphic engine written in c++.
 ## DEPENDENCIES
 |Dependencies | |
